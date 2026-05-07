@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Market Direction — AI Analysis</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0a0f;
+  --surface: #111118;
+  --surface2: #1a1a24;
+  --border: rgba(255,255,255,0.07);
+  --border2: rgba(255,255,255,0.13);
+  --text: #e8e8f0;
+  --text2: #8888a0;
+  --text3: #4a4a60;
+  --up: #00e8a0;
+  --up-bg: rgba(0,232,160,0.08);
+  --down: #ff4d6d;
+  --down-bg: rgba(255,77,109,0.08);
+  --neutral: #f0b429;
+  --neutral-bg: rgba(240,180,41,0.08);
+  --accent: #7c6aff;
+  --accent-bg: rgba(124,106,255,0.1);
+  --mono: 'Space Mono', monospace;
+  --sans: 'DM Sans', sans-serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 14px; }
+body { min-height: 100vh; padding: 0; }
+
+.topbar {
+  border-bottom: 0.5px solid var(--border);
+  padding: 14px 24px;
+  display: flex; align-items: center; justify-content: space-between;
+  position: sticky; top: 0; z-index: 10;
+  background: rgba(10,10,15,0.92);
+  backdrop-filter: blur(12px);
+}
+.logo {
+  font-family: var(--mono); font-size: 13px; font-weight: 700;
+  color: var(--text); letter-spacing: 0.05em;
+  display: flex; align-items: center; gap: 8px;
+}
+.logo-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--up); animation: pulse 2s ease-in-out infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+.topbar-right { font-size: 11px; color: var(--text3); font-family: var(--mono); }
+
+.main { max-width: 900px; margin: 0 auto; padding: 28px 20px 60px; }
+
+.api-setup {
+  background: var(--surface);
+  border: 0.5px solid var(--border2);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 24px;
+  display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap;
+}
+.api-setup label { font-size: 11px; color: var(--text3); font-family: var(--mono); letter-spacing: 0.05em; display: block; margin-bottom: 6px; }
+.api-setup input {
+  background: var(--bg); border: 0.5px solid var(--border2);
+  border-radius: 8px; padding: 9px 12px; font-size: 13px;
+  color: var(--text); font-family: var(--mono); width: 320px; max-width: 100%;
+  outline: none;
+}
+.api-setup input:focus { border-color: var(--accent); }
+.api-note { font-size: 11px; color: var(--text3); margin-top: 6px; line-height: 1.5; }
+
+.asset-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 8px;
+  margin-bottom: 24px;
+}
+.asset-btn {
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 10px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  text-align: left;
+}
+.asset-btn:hover { border-color: var(--border2); background: var(--surface2); }
+.asset-btn.active { border-color: var(--accent); background: var(--accent-bg); }
+.asset-btn .ab-sym { font-family: var(--mono); font-size: 12px; font-weight: 700; color: var(--text); }
+.asset-btn .ab-name { font-size: 11px; color: var(--text2); margin-top: 2px; }
+.asset-btn .ab-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--text3); margin-bottom: 8px; }
+.asset-btn.active .ab-dot { background: var(--accent); }
+
+.analyze-btn {
+  width: 100%; padding: 14px;
+  background: transparent;
+  border: 0.5px solid var(--border2);
+  border-radius: 10px;
+  font-family: var(--mono); font-size: 13px; font-weight: 700;
+  color: var(--text); cursor: pointer;
+  letter-spacing: 0.05em;
+  transition: border-color 0.15s, background 0.15s;
+  margin-bottom: 24px;
+}
+.analyze-btn:hover { border-color: var(--accent); background: var(--accent-bg); }
+.analyze-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.loading-bar {
+  height: 1px; background: var(--border);
+  border-radius: 1px; overflow: hidden; margin-bottom: 24px;
+  display: none;
+}
+.loading-bar.active { display: block; }
+.loading-fill {
+  height: 100%; width: 0%; background: var(--accent);
+  animation: loadfill 2.5s ease-in-out infinite;
+}
+@keyframes loadfill { 0%{width:0%} 60%{width:80%} 100%{width:95%} }
+.loading-text { font-size: 12px; color: var(--text3); font-family: var(--mono); margin-bottom: 16px; display: none; }
+.loading-text.active { display: block; }
+
+.result { display: none; }
+.result.visible { display: block; }
+
+.price-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.price-card {
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+.pc-label { font-size: 10px; color: var(--text3); font-family: var(--mono); letter-spacing: 0.06em; margin-bottom: 6px; }
+.pc-value { font-size: 22px; font-weight: 500; font-family: var(--mono); color: var(--text); }
+.pc-sub { font-size: 12px; margin-top: 3px; font-family: var(--mono); }
+.up-color { color: var(--up); }
+.down-color { color: var(--down); }
+.neutral-color { color: var(--neutral); }
+
+.badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 10px; border-radius: 6px;
+  font-size: 11px; font-weight: 700; font-family: var(--mono);
+  letter-spacing: 0.04em;
+}
+.badge-up { background: var(--up-bg); color: var(--up); border: 0.5px solid rgba(0,232,160,0.2); }
+.badge-down { background: var(--down-bg); color: var(--down); border: 0.5px solid rgba(255,77,109,0.2); }
+.badge-neutral { background: var(--neutral-bg); color: var(--neutral); border: 0.5px solid rgba(240,180,41,0.2); }
+
+.section-block {
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: 10px;
+  padding: 16px 18px;
+  margin-bottom: 12px;
+}
+.section-title {
+  font-size: 10px; font-family: var(--mono); font-weight: 700;
+  color: var(--text3); letter-spacing: 0.1em;
+  text-transform: uppercase; margin-bottom: 12px;
+  display: flex; align-items: center; gap: 6px;
+}
+.section-title::after { content: ''; flex: 1; height: 0.5px; background: var(--border); }
+
+.bullet { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 7px; line-height: 1.55; }
+.bullet-tick { color: var(--text3); font-size: 11px; margin-top: 2px; flex-shrink: 0; font-family: var(--mono); }
+
+.pred-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media(max-width:500px){ .pred-grid { grid-template-columns:1fr; } }
+.pred-card {
+  background: var(--surface2);
+  border: 0.5px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+.pred-tf { font-size: 10px; font-family: var(--mono); color: var(--text3); letter-spacing: 0.08em; margin-bottom: 8px; }
+.pred-dir { margin-bottom: 8px; }
+.conf-track { height: 3px; background: var(--border2); border-radius: 2px; margin: 8px 0 4px; overflow: hidden; }
+.conf-fill { height: 100%; border-radius: 2px; transition: width 0.8s cubic-bezier(0.4,0,0.2,1); }
+.conf-fill-up { background: var(--up); }
+.conf-fill-down { background: var(--down); }
+.conf-fill-neutral { background: var(--neutral); }
+.conf-label { font-size: 10px; color: var(--text3); font-family: var(--mono); }
+.pred-reason { font-size: 12px; color: var(--text2); margin-top: 6px; line-height: 1.55; }
+
+.tag-wrap { display: flex; flex-wrap: wrap; gap: 6px; }
+.tag {
+  font-size: 11px; padding: 4px 10px;
+  border: 0.5px solid var(--border2);
+  border-radius: 6px; color: var(--text2);
+  font-family: var(--mono);
+}
+
+.levels-row { display: flex; gap: 16px; }
+.level-item { flex: 1; }
+.level-lbl { font-size: 10px; color: var(--text3); font-family: var(--mono); margin-bottom: 4px; }
+.level-val { font-size: 15px; font-family: var(--mono); font-weight: 700; }
+
+.refresh-btn {
+  background: transparent; border: 0.5px solid var(--border2);
+  border-radius: 8px; padding: 8px 16px;
+  font-family: var(--mono); font-size: 11px; font-weight: 700;
+  color: var(--text2); cursor: pointer; letter-spacing: 0.05em;
+  transition: border-color 0.15s;
+  margin-top: 4px;
+}
+.refresh-btn:hover { border-color: var(--accent); color: var(--text); }
+
+.disclaimer {
+  font-size: 11px; color: var(--text3); line-height: 1.65;
+  border-top: 0.5px solid var(--border);
+  padding-top: 14px; margin-top: 16px;
+  font-family: var(--mono);
+}
+.timestamp { font-size: 10px; color: var(--text3); font-family: var(--mono); margin-top: 12px; }
+
+.error-msg {
+  background: var(--down-bg); border: 0.5px solid rgba(255,77,109,0.2);
+  border-radius: 10px; padding: 16px 18px;
+  color: var(--down); font-size: 13px; font-family: var(--mono);
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">
+    <div class="logo-dot"></div>
+    MARKET DIRECTION
+  </div>
+  <div class="topbar-right" id="ts-top">AI-POWERED ANALYSIS</div>
+</div>
+
+<div class="main">
+
+  <div class="api-setup">
+    <div style="flex:1; min-width:220px;">
+      <label>ANTHROPIC API KEY</label>
+      <input type="password" id="api-key" placeholder="sk-ant-..." autocomplete="off">
+      <div class="api-note">Key lưu trong session, không gửi đi đâu ngoài api.anthropic.com</div>
+    </div>
+    <div>
+      <label>MODEL</label>
+      <input type="text" id="model-input" value="claude-sonnet-4-20250514" style="width:240px;">
+    </div>
+  </div>
+
+  <div class="asset-grid" id="asset-grid"></div>
+
+  <button class="analyze-btn" id="analyze-btn" onclick="analyze()">
+    ▶ ANALYZE — <span id="selected-label">GOLD (XAU/USD)</span>
+  </button>
+
+  <div class="loading-bar" id="loading-bar"><div class="loading-fill"></div></div>
+  <div class="loading-text" id="loading-text">Searching web + analyzing market context...</div>
+
+  <div class="result" id="result"></div>
+
+</div>
+
+<script>
+const ASSETS = [
+  { sym: 'XAU/USD', name: 'Gold', key: 'XAUUSD' },
+  { sym: 'EUR/USD', name: 'Euro', key: 'EURUSD' },
+  { sym: 'GBP/USD', name: 'Pound', key: 'GBPUSD' },
+  { sym: 'BTC/USD', name: 'Bitcoin', key: 'BTCUSD' },
+  { sym: 'S&P 500', name: 'US Equities', key: 'US500' },
+  { sym: 'DXY', name: 'Dollar Index', key: 'DXY' },
+  { sym: 'WTI Oil', name: 'Crude Oil', key: 'WTIUSD' },
+  { sym: 'NAS 100', name: 'Nasdaq', key: 'NAS100' },
+];
+
+let currentKey = 'XAUUSD';
+let isLoading = false;
+
+function initGrid() {
+  const grid = document.getElementById('asset-grid');
+  grid.innerHTML = ASSETS.map(a => `
+    <button class="asset-btn${a.key === currentKey ? ' active' : ''}" onclick="selectAsset('${a.key}', '${a.sym}', this)">
+      <div class="ab-dot"></div>
+      <div class="ab-sym">${a.sym}</div>
+      <div class="ab-name">${a.name}</div>
+    </button>`).join('');
+}
+
+function selectAsset(key, sym, btn) {
+  currentKey = key;
+  document.querySelectorAll('.asset-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('selected-label').textContent = sym;
+}
+
+async function analyze() {
+  if (isLoading) return;
+  const apiKey = document.getElementById('api-key').value.trim();
+  const model = document.getElementById('model-input').value.trim() || 'claude-sonnet-4-20250514';
+  if (!apiKey) { alert('Vui lòng nhập Anthropic API Key.'); return; }
+
+  isLoading = true;
+  const btn = document.getElementById('analyze-btn');
+  btn.disabled = true;
+  document.getElementById('loading-bar').classList.add('active');
+  document.getElementById('loading-text').classList.add('active');
+  document.getElementById('result').classList.remove('visible');
+
+  const asset = ASSETS.find(a => a.key === currentKey);
+  const assetLabel = `${asset.sym} (${asset.name})`;
+
+  const systemPrompt = `Bạn là trader chuyên nghiệp 20 năm kinh nghiệm. Bạn phân tích thị trường dựa trên: macro (CPI, NFP, GDP, PMI, retail sales), chính sách tiền tệ Fed/ECB/BOE/BOJ, DXY correlation, risk sentiment (VIX, S&P500 trend), địa chính trị, COT positioning, và technical key levels.
+
+Dùng web search để lấy thông tin thực tế mới nhất: giá hiện tại, tin tức hôm nay, economic calendar sắp tới.
+
+Trả về ONLY JSON, không có text khác, không có markdown backticks:
+
+{
+  "price": "giá dạng string",
+  "change24h": "+1.2% hoặc -0.8% hoặc N/A",
+  "sentiment": "bullish" hoặc "bearish" hoặc "neutral",
+  "sentimentLabel": "Bullish" hoặc "Bearish" hoặc "Neutral" hoặc "Strongly Bullish" hoặc "Strongly Bearish",
+  "macro": ["yếu tố macro 1 ảnh hưởng trực tiếp hôm nay/tuần này", "yếu tố 2", "yếu tố 3", "yếu tố 4"],
+  "keyLevels": { "support": "...", "resistance": "..." },
+  "upcomingEvents": ["event kinh tế sắp tới 1", "event 2", "event 3"],
+  "pred5m": { "direction": "up" hoặc "down" hoặc "sideways", "label": "UP" hoặc "DOWN" hoặc "FLAT", "confidence": 65, "reason": "lý do cụ thể 1 dòng" },
+  "pred15m": { "direction": "up" hoặc "down" hoặc "sideways", "label": "UP" hoặc "DOWN" hoặc "FLAT", "confidence": 60, "reason": "lý do cụ thể 1 dòng" }
+}
+
+Confidence tối đa 82 (thị trường luôn có rủi ro). Macro bullets phải cụ thể, không chung chung.`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model,
+        max_tokens: 1200,
+        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+        system: systemPrompt,
+        messages: [{
+          role: 'user',
+          content: `Phân tích ${assetLabel} ngay bây giờ. Tìm giá thực tế hiện tại, tin tức mới nhất hôm nay, và các yếu tố macro đang drive thị trường. Trả về JSON.`
+        }]
+      })
+    });
+
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message);
+
+    const textBlock = data.content && data.content.find(b => b.type === 'text');
+    if (!textBlock) throw new Error('No text response from API');
+
+    let raw = textBlock.text.trim().replace(/```json|```/g, '').trim();
+    const f = raw.indexOf('{'), l = raw.lastIndexOf('}');
+    if (f !== -1 && l !== -1) raw = raw.slice(f, l + 1);
+    const d = JSON.parse(raw);
+    renderResult(d, assetLabel);
+
+  } catch (err) {
+    document.getElementById('result').innerHTML = `<div class="error-msg">ERROR: ${err.message}</div>`;
+    document.getElementById('result').classList.add('visible');
+  }
+
+  isLoading = false;
+  btn.disabled = false;
+  document.getElementById('loading-bar').classList.remove('active');
+  document.getElementById('loading-text').classList.remove('active');
+}
+
+function renderResult(d, label) {
+  const sentClass = d.sentiment === 'bullish' ? 'badge-up' : d.sentiment === 'bearish' ? 'badge-down' : 'badge-neutral';
+  const chgColor = (d.change24h||'').startsWith('+') ? 'up-color' : (d.change24h||'').startsWith('-') ? 'down-color' : 'neutral-color';
+
+  function predCard(p, tf) {
+    const bc = p.direction === 'up' ? 'badge-up' : p.direction === 'down' ? 'badge-down' : 'badge-neutral';
+    const fc = p.direction === 'up' ? 'conf-fill-up' : p.direction === 'down' ? 'conf-fill-down' : 'conf-fill-neutral';
+    const arrow = p.direction === 'up' ? '↑' : p.direction === 'down' ? '↓' : '→';
+    return `
+      <div class="pred-card">
+        <div class="pred-tf">${tf}</div>
+        <div class="pred-dir"><span class="badge ${bc}">${arrow} ${p.label}</span></div>
+        <div class="conf-track"><div class="conf-fill ${fc}" style="width:${p.confidence}%"></div></div>
+        <div class="conf-label">CONFIDENCE ${p.confidence}%</div>
+        <div class="pred-reason">${p.reason}</div>
+      </div>`;
+  }
+
+  const macroBullets = (d.macro||[]).map(b =>
+    `<div class="bullet"><span class="bullet-tick">—</span><span>${b}</span></div>`).join('');
+  const eventTags = (d.upcomingEvents||[]).map(e => `<span class="tag">${e}</span>`).join('');
+
+  const now = new Date().toLocaleString('vi-VN');
+  document.getElementById('ts-top').textContent = now;
+
+  document.getElementById('result').innerHTML = `
+    <div class="price-row">
+      <div class="price-card">
+        <div class="pc-label">PRICE — ${label}</div>
+        <div class="pc-value">${d.price || 'N/A'}</div>
+        <div class="pc-sub ${chgColor}">${d.change24h || ''}</div>
+      </div>
+      <div class="price-card">
+        <div class="pc-label">MARKET SENTIMENT</div>
+        <div style="margin-top:6px;"><span class="badge ${sentClass}">${d.sentimentLabel || d.sentiment}</span></div>
+      </div>
+      <div class="price-card">
+        <div class="pc-label">KEY LEVELS</div>
+        <div class="levels-row" style="margin-top:6px;">
+          <div class="level-item">
+            <div class="level-lbl">SUPPORT</div>
+            <div class="level-val up-color">${d.keyLevels?.support || 'N/A'}</div>
+          </div>
+          <div class="level-item">
+            <div class="level-lbl">RESIST.</div>
+            <div class="level-val down-color">${d.keyLevels?.resistance || 'N/A'}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block">
+      <div class="section-title">MACRO & FUNDAMENTAL DRIVERS</div>
+      ${macroBullets}
+    </div>
+
+    <div class="section-block">
+      <div class="section-title">SHORT-TERM PREDICTION</div>
+      <div class="pred-grid">
+        ${predCard(d.pred5m, '5-MINUTE')}
+        ${predCard(d.pred15m, '15-MINUTE')}
+      </div>
+    </div>
+
+    ${eventTags ? `<div class="section-block">
+      <div class="section-title">UPCOMING EVENTS</div>
+      <div class="tag-wrap">${eventTags}</div>
+    </div>` : ''}
+
+    <div style="margin-top:8px;">
+      <button class="refresh-btn" onclick="analyze()">↺ REFRESH ANALYSIS</button>
+    </div>
+
+    <div class="disclaimer">
+      ⚠ Phân tích tổng hợp từ AI + web search. Không phải tín hiệu giao dịch chính xác.<br>
+      Thị trường luôn có rủi ro không thể dự đoán — không dùng làm cơ sở đầu tư duy nhất.
+    </div>
+    <div class="timestamp">Last updated: ${now}</div>
+  `;
+  document.getElementById('result').classList.add('visible');
+}
+
+initGrid();
+</script>
+</body>
+</html>
