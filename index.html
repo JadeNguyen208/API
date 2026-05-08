@@ -271,7 +271,7 @@ Analyze ${assetLabel} and return ONLY valid JSON (no markdown, no extra text):
 sentimentScore: 0=strongly bearish,50=neutral,100=strongly bullish. Max confidence:82.`;
 
     const gRes=await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${geminiKey}`,
       {method:'POST',headers:{'Content-Type':'application/json'},
        body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:0.2,maxOutputTokens:2000}})}
     );
