@@ -190,6 +190,23 @@
     .xm-heading { align-self: center; }
     .xm-title { color: var(--gold); font: 700 11px var(--mono); letter-spacing: 0.06em; }
     .xm-caption { margin-top: 4px; color: var(--faint); font-size: 11px; }
+    .xm-live-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 9px; }
+    .xm-connect-btn {
+      padding: 6px 10px;
+      color: var(--text);
+      border: 1px solid var(--border-strong);
+      border-radius: 7px;
+      background: var(--surface-2);
+      cursor: pointer;
+      font: 700 9px var(--mono);
+      letter-spacing: 0.04em;
+    }
+    .xm-connect-btn:hover { border-color: var(--gold); }
+    .xm-status { color: var(--faint); font: 700 9px var(--mono); letter-spacing: 0.04em; }
+    .xm-status.online { color: var(--up); }
+    .xm-status.connecting { color: var(--neutral); }
+    .xm-status.offline { color: var(--down); }
+    .xm-context input[readonly] { color: var(--up); border-color: rgba(33, 213, 155, 0.28); }
 
     .status {
       display: none;
@@ -414,6 +431,10 @@
         <div class="xm-heading">
           <div class="xm-title">XM · GOLD (TÙY CHỌN)</div>
           <div class="xm-caption">Nhập Bid/Ask đang thấy trên XM MT4 hoặc MT5 để phân tích bám sát giá tài khoản.</div>
+          <div class="xm-live-row">
+            <button class="xm-connect-btn" id="xm-connect-btn" type="button">KẾT NỐI XM MT5</button>
+            <span class="xm-status" id="xm-live-status">CHƯA KẾT NỐI</span>
+          </div>
         </div>
         <div>
           <label for="xm-bid">XM BID · GIÁ BÁN</label>
@@ -441,9 +462,15 @@
     const serperKeyInput = document.getElementById("serper-key");
     const xmBidInput = document.getElementById("xm-bid");
     const xmAskInput = document.getElementById("xm-ask");
+    const xmConnectButton = document.getElementById("xm-connect-btn");
+    const xmLiveStatus = document.getElementById("xm-live-status");
     const analyzeButton = document.getElementById("analyze-btn");
     const statusBox = document.getElementById("status");
     const resultBox = document.getElementById("result");
+    const XM_BRIDGE_ENDPOINT = ["127.0.0.1", "localhost"].includes(location.hostname)
+      ? "/api/xm-tick"
+      : "http://127.0.0.1:8766/api/xm-tick";
+    let xmPollTimer = null;
 
     const analysisSchema = {
       type: "object",
@@ -583,8 +610,63 @@
         bid,
         ask,
         spread: ask - bid,
-        midpoint: (ask + bid) / 2
+        midpoint: (ask + bid) / 2,
+        source: xmBidInput.dataset.source || "manual",
+        timeMsc: Number(xmBidInput.dataset.timeMsc || 0) || null
       };
+    }
+
+    function setXmStatus(message, state = "") {
+      xmLiveStatus.textContent = message;
+      xmLiveStatus.className = `xm-status ${state}`.trim();
+    }
+
+    function setXmInputsLive(isLive) {
+      xmBidInput.readOnly = isLive;
+      xmAskInput.readOnly = isLive;
+      if (!isLive) {
+        delete xmBidInput.dataset.source;
+        delete xmBidInput.dataset.timeMsc;
+      }
+    }
+
+    async function updateXmTick() {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 1800);
+      try {
+        const response = await fetch(`${XM_BRIDGE_ENDPOINT}?t=${Date.now()}`, {
+          cache: "no-store",
+          signal: controller.signal
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.ok) throw new Error(data.error || `HTTP ${response.status}`);
+
+        const digits = Math.min(5, Math.max(0, Number(data.digits ?? 2)));
+        xmBidInput.value = Number(data.bid).toFixed(digits);
+        xmAskInput.value = Number(data.ask).toFixed(digits);
+        xmBidInput.dataset.source = "XM MT5 live";
+        xmBidInput.dataset.timeMsc = String(data.timeMsc || 0);
+        setXmInputsLive(true);
+
+        const tickTime = data.timeMsc ? new Date(data.timeMsc).toLocaleTimeString("vi-VN") : "vừa cập nhật";
+        setXmStatus(`${data.symbol} LIVE · ${tickTime}`, data.stale ? "connecting" : "online");
+        xmConnectButton.textContent = "ĐANG LẤY GIÁ TỰ ĐỘNG";
+        return true;
+      } catch (error) {
+        setXmInputsLive(false);
+        setXmStatus("MT5 CHƯA KẾT NỐI", "offline");
+        xmConnectButton.textContent = "KẾT NỐI XM MT5";
+        return false;
+      } finally {
+        clearTimeout(timeout);
+      }
+    }
+
+    async function startXmPolling() {
+      if (xmPollTimer) clearInterval(xmPollTimer);
+      setXmStatus("ĐANG KẾT NỐI…", "connecting");
+      const connected = await updateXmTick();
+      if (connected) xmPollTimer = setInterval(updateXmTick, 1000);
     }
 
     function listHtml(items, tone) {
@@ -796,6 +878,8 @@ Mục tiêu: đánh giá vàng có khả năng TĂNG, GIẢM hay ĐI NGANG trong
     apiKeyInput.addEventListener("keydown", event => {
       if (event.key === "Enter") analyzeGold();
     });
+    xmConnectButton.addEventListener("click", startXmPolling);
+    startXmPolling();
   </script>
 </body>
 </html>

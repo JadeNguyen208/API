@@ -20,6 +20,17 @@ Trang web tĩnh dùng **Serper** để lấy dữ liệu thị trường mới v
 
 Nếu đang giao dịch trên XM, có thể nhập thêm giá `Bid` và `Ask` của mã `GOLD` đang hiển thị trên MT4/MT5. Phần này là tùy chọn; trang web không đăng nhập hoặc gửi lệnh tới XM.
 
+## Tự lấy giá từ XM MT5
+
+Tính năng này chỉ đọc giá tick, không có mã gửi lệnh và không lưu thông tin đăng nhập.
+
+1. Cài và đăng nhập XM MT5 trên máy Windows.
+2. Chạy `setup_xm.bat` một lần để tạo môi trường và cài thư viện MetaTrader5.
+3. Mỗi lần sử dụng, mở XM MT5 rồi chạy `start_xm.bat`.
+4. Trình duyệt sẽ mở `http://127.0.0.1:8766/`; Bid/Ask GOLD được cập nhật mỗi giây.
+
+Có thể đặt biến môi trường `XM_SYMBOL` nếu mã vàng trên tài khoản không phải `GOLD`, và `XM_MT5_PATH` nếu máy có nhiều terminal MT5.
+
 Mỗi lần phân tích hiện dùng bốn lượt tìm kiếm Serper, trong đó có một lượt tìm thông tin chính thức từ XM. Hạn mức và giá có thể thay đổi theo chính sách của nhà cung cấp.
 
 ## Bảo mật
