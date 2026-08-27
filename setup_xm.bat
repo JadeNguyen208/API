@@ -9,7 +9,7 @@ if errorlevel 1 goto :error
 ".venv\Scripts\python.exe" -m pip install -r requirements.txt
 if errorlevel 1 goto :error
 echo.
-echo Setup complete. Open XM MT5, then run start_xm.bat.
+echo Setup complete. Run setup_keys.bat once, open XM MT5, then run start_xm.bat.
 pause
 exit /b 0
 

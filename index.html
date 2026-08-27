@@ -42,7 +42,7 @@
       font: 14px/1.6 var(--sans);
     }
 
-    button, input { font: inherit; }
+    button, input, select { font: inherit; }
     a { color: inherit; }
 
     .topbar {
@@ -137,7 +137,7 @@
       letter-spacing: 0.08em;
     }
 
-    input {
+    input, select {
       width: 100%;
       min-height: 45px;
       padding: 10px 13px;
@@ -150,7 +150,8 @@
       font-size: 12px;
     }
 
-    input:focus { border-color: var(--gold); }
+    input:focus, select:focus { border-color: var(--gold); }
+    select { cursor: pointer; }
 
     .analyze-btn {
       min-height: 45px;
@@ -221,6 +222,105 @@
 
     .status.visible { display: block; }
     .status.error { color: var(--down); border-color: rgba(255, 100, 124, 0.3); background: var(--down-soft); }
+
+    .trend-panel {
+      margin-top: 18px;
+      padding: 18px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: rgba(17, 19, 26, 0.94);
+    }
+
+    .trend-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 15px;
+    }
+
+    .trend-heading h2 { margin: 0; font-size: 18px; letter-spacing: -0.02em; }
+    .trend-heading p { margin: 4px 0 0; color: var(--faint); font-size: 11px; }
+
+    .trend-state {
+      flex: 0 0 auto;
+      padding: 6px 10px;
+      border: 1px solid var(--border-strong);
+      border-radius: 999px;
+      color: var(--faint);
+      background: var(--surface-2);
+      font: 700 10px var(--mono);
+      letter-spacing: 0.04em;
+    }
+
+    .trend-state.up { color: var(--up); border-color: rgba(33, 213, 155, 0.38); background: var(--up-soft); }
+    .trend-state.down { color: var(--down); border-color: rgba(255, 100, 124, 0.38); background: var(--down-soft); }
+    .trend-state.neutral { color: var(--neutral); border-color: rgba(255, 180, 84, 0.38); background: var(--neutral-soft); }
+
+    .trend-controls {
+      display: grid;
+      grid-template-columns: minmax(150px, 1fr) minmax(110px, 0.45fr) auto;
+      gap: 10px;
+      align-items: end;
+      margin-bottom: 12px;
+    }
+
+    .trend-refresh {
+      min-height: 45px;
+      padding: 9px 14px;
+      color: var(--text);
+      border: 1px solid var(--border-strong);
+      border-radius: 9px;
+      background: var(--surface-2);
+      cursor: pointer;
+      font: 700 10px var(--mono);
+    }
+
+    .trend-refresh:hover { color: var(--gold); border-color: var(--gold); }
+
+    .chart-wrap {
+      position: relative;
+      min-height: 390px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #0b0d12;
+    }
+
+    #trend-chart { display: block; width: 100%; height: 390px; }
+
+    .chart-message {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      color: var(--faint);
+      background: rgba(11, 13, 18, 0.86);
+      font: 11px/1.7 var(--mono);
+      text-align: center;
+    }
+
+    .chart-message.hidden { display: none; }
+
+    .trend-readout {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .trend-stat {
+      min-width: 0;
+      padding: 10px 11px;
+      border-radius: 8px;
+      background: var(--surface-2);
+    }
+
+    .trend-stat-label { color: var(--faint); font: 700 9px var(--mono); letter-spacing: 0.06em; }
+    .trend-stat-value { overflow: hidden; margin-top: 4px; font: 700 12px var(--mono); text-overflow: ellipsis; white-space: nowrap; }
+
+    .trend-note { margin: 10px 0 0; color: var(--faint); font-size: 11px; }
 
     .loading-dot::after {
       content: "";
@@ -383,6 +483,7 @@
       .analyze-btn { grid-column: 1 / -1; }
       .xm-context { grid-template-columns: 1fr 1fr; }
       .xm-heading { grid-column: 1 / -1; }
+      .trend-readout { grid-template-columns: 1fr 1fr; }
     }
 
     @media (max-width: 560px) {
@@ -394,6 +495,11 @@
       .xm-heading { grid-column: auto; }
       .overview { grid-template-columns: 1fr; }
       .predictions { grid-template-columns: 1fr; }
+      .trend-header { display: grid; }
+      .trend-state { justify-self: start; }
+      .trend-controls { grid-template-columns: 1fr 1fr; }
+      .trend-refresh { grid-column: 1 / -1; }
+      .chart-wrap, #trend-chart { min-height: 320px; height: 320px; }
     }
   </style>
 </head>
@@ -423,7 +529,8 @@
         <button class="analyze-btn" id="analyze-btn" type="button">PHÂN TÍCH VÀNG</button>
       </div>
       <p class="config-note">
-        Hai key chỉ nằm trong ô nhập của trình duyệt và không được ghi vào mã nguồn.
+        Chạy <strong>setup_keys.bat</strong> một lần để bridge dùng key local mà không phải nhập lại; key không được đưa lên GitHub.
+        <span id="api-config-status">Nếu bridge chưa có key, bạn vẫn có thể nhập tạm trong hai ô trên.</span>
         <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Gemini key</a>
         · <a href="https://serper.dev" target="_blank" rel="noopener noreferrer">Serper key</a>.
       </p>
@@ -448,6 +555,61 @@
       <div class="status" id="status" role="status" aria-live="polite"></div>
     </section>
 
+    <section class="trend-panel" aria-labelledby="trend-title">
+      <div class="trend-header">
+        <div class="trend-heading">
+          <h2 id="trend-title">Đường xu hướng MUA / BÁN</h2>
+          <p>Supertrend ATR(10) × 3 · chỉ đổi tín hiệu sau khi nến đóng để hạn chế repaint.</p>
+        </div>
+        <div class="trend-state neutral" id="trend-state">ĐANG CHỜ MT5</div>
+      </div>
+
+      <div class="trend-controls">
+        <div>
+          <label for="chart-symbol">MÃ TRÊN MT5</label>
+          <input type="text" id="chart-symbol" value="GOLD" maxlength="40" spellcheck="false" autocomplete="off">
+        </div>
+        <div>
+          <label for="trend-timeframe">KHUNG NẾN</label>
+          <select id="trend-timeframe">
+            <option value="M1">M1 · 1 phút</option>
+            <option value="M5" selected>M5 · 5 phút</option>
+            <option value="M15">M15 · 15 phút</option>
+            <option value="M30">M30 · 30 phút</option>
+            <option value="H1">H1 · 1 giờ</option>
+            <option value="H4">H4 · 4 giờ</option>
+            <option value="D1">D1 · 1 ngày</option>
+          </select>
+        </div>
+        <button class="trend-refresh" id="trend-refresh" type="button">CẬP NHẬT BIỂU ĐỒ</button>
+      </div>
+
+      <div class="chart-wrap" id="chart-wrap">
+        <canvas id="trend-chart" role="img" aria-label="Biểu đồ nến cùng đường Supertrend MUA và BÁN"></canvas>
+        <div class="chart-message" id="chart-message">Mở XM MT5 và chạy start_xm.bat để tải dữ liệu nến.</div>
+      </div>
+
+      <div class="trend-readout">
+        <div class="trend-stat">
+          <div class="trend-stat-label">TÍN HIỆU NẾN ĐÃ ĐÓNG</div>
+          <div class="trend-stat-value neutral" id="trend-signal">CHỜ DỮ LIỆU</div>
+        </div>
+        <div class="trend-stat">
+          <div class="trend-stat-label">GIÁ ĐÓNG CỬA</div>
+          <div class="trend-stat-value" id="trend-close">—</div>
+        </div>
+        <div class="trend-stat">
+          <div class="trend-stat-label">ĐƯỜNG SUPERTREND</div>
+          <div class="trend-stat-value" id="trend-line">—</div>
+        </div>
+        <div class="trend-stat">
+          <div class="trend-stat-label">CẬP NHẬT</div>
+          <div class="trend-stat-value" id="trend-updated">—</div>
+        </div>
+      </div>
+      <p class="trend-note">Đường xanh nằm dưới giá: ưu tiên xu hướng mua. Đường đỏ nằm trên giá: ưu tiên xu hướng bán. Đây là chỉ báo kỹ thuật, không tự gửi lệnh.</p>
+    </section>
+
     <section class="result" id="result" aria-live="polite"></section>
   </main>
 
@@ -460,6 +622,7 @@
 
     const apiKeyInput = document.getElementById("gemini-key");
     const serperKeyInput = document.getElementById("serper-key");
+    const apiConfigStatus = document.getElementById("api-config-status");
     const xmBidInput = document.getElementById("xm-bid");
     const xmAskInput = document.getElementById("xm-ask");
     const xmConnectButton = document.getElementById("xm-connect-btn");
@@ -467,10 +630,38 @@
     const analyzeButton = document.getElementById("analyze-btn");
     const statusBox = document.getElementById("status");
     const resultBox = document.getElementById("result");
+    const chartSymbolInput = document.getElementById("chart-symbol");
+    const trendTimeframeInput = document.getElementById("trend-timeframe");
+    const trendRefreshButton = document.getElementById("trend-refresh");
+    const trendState = document.getElementById("trend-state");
+    const trendCanvas = document.getElementById("trend-chart");
+    const trendChartWrap = document.getElementById("chart-wrap");
+    const trendChartMessage = document.getElementById("chart-message");
+    const trendSignal = document.getElementById("trend-signal");
+    const trendClose = document.getElementById("trend-close");
+    const trendLine = document.getElementById("trend-line");
+    const trendUpdated = document.getElementById("trend-updated");
     const XM_BRIDGE_ENDPOINT = ["127.0.0.1", "localhost"].includes(location.hostname)
       ? "/api/xm-tick"
       : "http://127.0.0.1:8766/api/xm-tick";
+    const XM_BARS_ENDPOINT = ["127.0.0.1", "localhost"].includes(location.hostname)
+      ? "/api/xm-bars"
+      : "http://127.0.0.1:8766/api/xm-bars";
+    const LOCAL_CONFIG_ENDPOINT = ["127.0.0.1", "localhost"].includes(location.hostname)
+      ? "/api/config"
+      : "http://127.0.0.1:8766/api/config";
+    const LOCAL_SERPER_ENDPOINT = ["127.0.0.1", "localhost"].includes(location.hostname)
+      ? "/api/serper-search"
+      : "http://127.0.0.1:8766/api/serper-search";
+    const LOCAL_GEMINI_ENDPOINT = ["127.0.0.1", "localhost"].includes(location.hostname)
+      ? "/api/gemini-analyze"
+      : "http://127.0.0.1:8766/api/gemini-analyze";
+    const SUPERTREND_PERIOD = 10;
+    const SUPERTREND_MULTIPLIER = 3;
     let xmPollTimer = null;
+    let trendPollTimer = null;
+    let trendChartData = null;
+    let localApiConfig = { geminiConfigured: false, serperConfigured: false, model: MODEL };
 
     const analysisSchema = {
       type: "object",
@@ -560,19 +751,67 @@
       return [...unique].slice(0, 8).map(([url, title]) => ({ url, title }));
     }
 
+    async function loadLocalApiConfig() {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 2200);
+      try {
+        const response = await fetch(`${LOCAL_CONFIG_ENDPOINT}?t=${Date.now()}`, {
+          cache: "no-store",
+          signal: controller.signal
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.ok) return;
+        localApiConfig = {
+          geminiConfigured: Boolean(data.geminiConfigured),
+          serperConfigured: Boolean(data.serperConfigured),
+          model: data.model || MODEL
+        };
+
+        if (localApiConfig.geminiConfigured) {
+          apiKeyInput.value = "";
+          apiKeyInput.readOnly = true;
+          apiKeyInput.placeholder = "Đã lưu an toàn trong .env local";
+        }
+        if (localApiConfig.serperConfigured) {
+          serperKeyInput.value = "";
+          serperKeyInput.readOnly = true;
+          serperKeyInput.placeholder = "Đã lưu an toàn trong .env local";
+        }
+
+        const configured = [
+          localApiConfig.geminiConfigured ? "Gemini" : "",
+          localApiConfig.serperConfigured ? "Serper" : ""
+        ].filter(Boolean);
+        apiConfigStatus.textContent = configured.length
+          ? `Bridge đã nhận key local: ${configured.join(" + ")}. `
+          : "Bridge đang chạy nhưng chưa có key local. ";
+        apiConfigStatus.style.color = configured.length === 2 ? "var(--up)" : "var(--neutral)";
+      } catch {
+        apiConfigStatus.textContent = "Bridge local chưa chạy; hiện cần nhập key tạm trong hai ô trên. ";
+      } finally {
+        clearTimeout(timeout);
+      }
+    }
+
+    function responseErrorMessage(payload, status) {
+      if (typeof payload?.error === "string") return payload.error;
+      return payload?.error?.message || payload?.message || `HTTP ${status}`;
+    }
+
     async function serperSearch(query, apiKey) {
-      const response = await fetch(SERPER_ENDPOINT, {
+      const useLocalKey = localApiConfig.serperConfigured;
+      const response = await fetch(useLocalKey ? LOCAL_SERPER_ENDPOINT : SERPER_ENDPOINT, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-API-KEY": apiKey
+          ...(useLocalKey ? {} : { "X-API-KEY": apiKey })
         },
         body: JSON.stringify({ q: query, num: 7, gl: "us", hl: "en" })
       });
 
       const payload = await response.json().catch(() => ({}));
       if (!response.ok || payload.error) {
-        const message = payload?.error?.message || payload?.message || `HTTP ${response.status}`;
+        const message = responseErrorMessage(payload, response.status);
         throw new Error(`Serper: ${message}`);
       }
       return payload;
@@ -667,6 +906,307 @@
       setXmStatus("ĐANG KẾT NỐI…", "connecting");
       const connected = await updateXmTick();
       if (connected) xmPollTimer = setInterval(updateXmTick, 1000);
+    }
+
+    function calculateAtr(bars, period = SUPERTREND_PERIOD) {
+      const trueRanges = bars.map((bar, index) => {
+        if (index === 0) return bar.high - bar.low;
+        const previousClose = bars[index - 1].close;
+        return Math.max(
+          bar.high - bar.low,
+          Math.abs(bar.high - previousClose),
+          Math.abs(bar.low - previousClose)
+        );
+      });
+      const atr = Array(bars.length).fill(null);
+      if (bars.length < period) return atr;
+
+      let seed = 0;
+      for (let index = 0; index < period; index += 1) seed += trueRanges[index];
+      atr[period - 1] = seed / period;
+      for (let index = period; index < bars.length; index += 1) {
+        atr[index] = ((atr[index - 1] * (period - 1)) + trueRanges[index]) / period;
+      }
+      return atr;
+    }
+
+    function computeSupertrend(bars, period = SUPERTREND_PERIOD, multiplier = SUPERTREND_MULTIPLIER) {
+      const atr = calculateAtr(bars, period);
+      const result = bars.map(() => ({ value: null, direction: null }));
+      let previousUpper = null;
+      let previousLower = null;
+      let previousDirection = null;
+
+      for (let index = 0; index < bars.length; index += 1) {
+        if (!Number.isFinite(atr[index])) continue;
+        const bar = bars[index];
+        const middle = (bar.high + bar.low) / 2;
+        const basicUpper = middle + multiplier * atr[index];
+        const basicLower = middle - multiplier * atr[index];
+        let finalUpper = basicUpper;
+        let finalLower = basicLower;
+
+        if (previousUpper !== null && previousLower !== null) {
+          const previousClose = bars[index - 1].close;
+          finalUpper = basicUpper < previousUpper || previousClose > previousUpper
+            ? basicUpper
+            : previousUpper;
+          finalLower = basicLower > previousLower || previousClose < previousLower
+            ? basicLower
+            : previousLower;
+        }
+
+        let direction;
+        if (previousDirection === null) {
+          direction = bar.close >= bar.open ? "up" : "down";
+        } else if (previousDirection === "down") {
+          direction = bar.close > finalUpper ? "up" : "down";
+        } else {
+          direction = bar.close < finalLower ? "down" : "up";
+        }
+
+        result[index] = {
+          value: direction === "up" ? finalLower : finalUpper,
+          direction
+        };
+        previousUpper = finalUpper;
+        previousLower = finalLower;
+        previousDirection = direction;
+      }
+      return result;
+    }
+
+    function setTrendState(message, state = "") {
+      trendState.textContent = message;
+      trendState.className = `trend-state ${state}`.trim();
+    }
+
+    function formatPrice(value, digits) {
+      return Number.isFinite(Number(value)) ? Number(value).toFixed(digits) : "—";
+    }
+
+    function formatChartTime(timestamp, timeframe) {
+      const options = timeframe === "D1"
+        ? { day: "2-digit", month: "2-digit", year: "2-digit" }
+        : { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false };
+      return new Intl.DateTimeFormat("vi-VN", options).format(new Date(timestamp * 1000));
+    }
+
+    function drawTrendChart() {
+      if (!trendChartData) return;
+      const { payload, bars, series } = trendChartData;
+      const width = Math.max(320, trendChartWrap.clientWidth || 900);
+      const height = Math.max(300, trendChartWrap.clientHeight || 390);
+      const pixelRatio = Math.min(2, window.devicePixelRatio || 1);
+      trendCanvas.width = Math.round(width * pixelRatio);
+      trendCanvas.height = Math.round(height * pixelRatio);
+      const context = trendCanvas.getContext("2d");
+      context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+      context.clearRect(0, 0, width, height);
+      context.fillStyle = "#0b0d12";
+      context.fillRect(0, 0, width, height);
+
+      const visibleCount = Math.min(120, bars.length);
+      const startIndex = bars.length - visibleCount;
+      const visibleBars = bars.slice(startIndex);
+      const visibleSeries = series.slice(startIndex);
+      const plottedValues = visibleBars.flatMap((bar, index) => {
+        const lineValue = visibleSeries[index]?.value;
+        return Number.isFinite(lineValue)
+          ? [bar.low, bar.high, lineValue]
+          : [bar.low, bar.high];
+      });
+      let minimum = Math.min(...plottedValues);
+      let maximum = Math.max(...plottedValues);
+      const priceRange = Math.max(maximum - minimum, Math.abs(maximum) * 0.001, 0.01);
+      minimum -= priceRange * 0.08;
+      maximum += priceRange * 0.08;
+
+      const plot = { left: 12, right: width - 72, top: 18, bottom: height - 30 };
+      const plotWidth = Math.max(10, plot.right - plot.left);
+      const plotHeight = Math.max(10, plot.bottom - plot.top);
+      const step = plotWidth / visibleBars.length;
+      const xFor = index => plot.left + (index + 0.5) * step;
+      const yFor = price => plot.top + ((maximum - price) / (maximum - minimum)) * plotHeight;
+
+      context.font = '9px "Space Mono", monospace';
+      context.textBaseline = "middle";
+      for (let line = 0; line <= 5; line += 1) {
+        const ratio = line / 5;
+        const y = plot.top + ratio * plotHeight;
+        const price = maximum - ratio * (maximum - minimum);
+        context.strokeStyle = "rgba(255,255,255,0.06)";
+        context.lineWidth = 1;
+        context.beginPath();
+        context.moveTo(plot.left, y);
+        context.lineTo(plot.right, y);
+        context.stroke();
+        context.fillStyle = "#6e7382";
+        context.fillText(formatPrice(price, payload.digits), plot.right + 8, y);
+      }
+
+      const timeLabelCount = width < 560 ? 3 : 5;
+      context.textAlign = "center";
+      context.textBaseline = "alphabetic";
+      for (let label = 0; label < timeLabelCount; label += 1) {
+        const index = Math.round(label * (visibleBars.length - 1) / Math.max(1, timeLabelCount - 1));
+        context.fillStyle = "#5f6473";
+        context.fillText(formatChartTime(visibleBars[index].time, payload.timeframe), xFor(index), height - 9);
+      }
+
+      const bodyWidth = Math.max(1.5, Math.min(7, step * 0.58));
+      visibleBars.forEach((bar, index) => {
+        const rising = bar.close >= bar.open;
+        const color = rising ? "#21d59b" : "#ff647c";
+        const x = xFor(index);
+        const openY = yFor(bar.open);
+        const closeY = yFor(bar.close);
+        context.strokeStyle = color;
+        context.lineWidth = 1;
+        context.beginPath();
+        context.moveTo(x, yFor(bar.high));
+        context.lineTo(x, yFor(bar.low));
+        context.stroke();
+        context.fillStyle = color;
+        context.fillRect(x - bodyWidth / 2, Math.min(openY, closeY), bodyWidth, Math.max(1, Math.abs(closeY - openY)));
+      });
+
+      context.lineWidth = 2.2;
+      context.lineJoin = "round";
+      context.lineCap = "round";
+      for (let index = 1; index < visibleSeries.length; index += 1) {
+        const previous = visibleSeries[index - 1];
+        const current = visibleSeries[index];
+        if (!Number.isFinite(previous?.value) || !Number.isFinite(current?.value)) continue;
+        if (previous.direction !== current.direction) continue;
+        context.strokeStyle = current.direction === "up" ? "#21d59b" : "#ff647c";
+        context.beginPath();
+        context.moveTo(xFor(index - 1), yFor(previous.value));
+        context.lineTo(xFor(index), yFor(current.value));
+        context.stroke();
+      }
+
+      context.font = '700 9px "Space Mono", monospace';
+      context.textAlign = "center";
+      context.textBaseline = "middle";
+      for (let index = 1; index < visibleSeries.length; index += 1) {
+        const previous = visibleSeries[index - 1];
+        const current = visibleSeries[index];
+        if (!current?.direction || !previous?.direction || current.direction === previous.direction) continue;
+        const isBuy = current.direction === "up";
+        const x = xFor(index);
+        const anchorY = yFor(isBuy ? visibleBars[index].low : visibleBars[index].high);
+        const markerY = Math.min(plot.bottom - 10, Math.max(plot.top + 10, anchorY + (isBuy ? 14 : -14)));
+        context.fillStyle = isBuy ? "#21d59b" : "#ff647c";
+        context.beginPath();
+        context.moveTo(x, markerY + (isBuy ? -5 : 5));
+        context.lineTo(x - 5, markerY + (isBuy ? 4 : -4));
+        context.lineTo(x + 5, markerY + (isBuy ? 4 : -4));
+        context.closePath();
+        context.fill();
+        context.fillText(isBuy ? "MUA" : "BÁN", x, markerY + (isBuy ? 13 : -13));
+      }
+
+      const lastBar = visibleBars.at(-1);
+      const lastY = yFor(lastBar.close);
+      context.setLineDash([4, 4]);
+      context.strokeStyle = "rgba(242,193,78,0.55)";
+      context.lineWidth = 1;
+      context.beginPath();
+      context.moveTo(plot.left, lastY);
+      context.lineTo(plot.right, lastY);
+      context.stroke();
+      context.setLineDash([]);
+    }
+
+    function renderTrendReadout(payload, bars, series, signalIndex) {
+      const signal = series[signalIndex];
+      const signalBar = bars[signalIndex];
+      const isBuy = signal.direction === "up";
+      const label = isBuy ? "MUA" : "BÁN";
+      const state = isBuy ? "up" : "down";
+      trendSignal.textContent = label;
+      trendSignal.className = `trend-stat-value ${state}`;
+      trendClose.textContent = formatPrice(signalBar.close, payload.digits);
+      trendLine.textContent = formatPrice(signal.value, payload.digits);
+      trendLine.className = `trend-stat-value ${state}`;
+      trendUpdated.textContent = formatChartTime(signalBar.time, payload.timeframe);
+      setTrendState(
+        `${payload.symbol} · ${payload.timeframe} · ${label}${payload.stale ? " · DỮ LIỆU CŨ" : ""}`,
+        payload.stale ? "neutral" : state
+      );
+    }
+
+    async function updateTrendChart(silent = false) {
+      const symbol = chartSymbolInput.value.trim();
+      if (!symbol) {
+        setTrendState("NHẬP MÃ MT5", "neutral");
+        trendChartMessage.textContent = "Hãy nhập mã tài sản đang có trong Market Watch của MT5.";
+        trendChartMessage.classList.remove("hidden");
+        return false;
+      }
+
+      const timeframe = trendTimeframeInput.value;
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 3500);
+      if (!silent) {
+        trendRefreshButton.disabled = true;
+        setTrendState("ĐANG TẢI DỮ LIỆU…", "neutral");
+      }
+      try {
+        const query = new URLSearchParams({ symbol, timeframe, count: "300", t: String(Date.now()) });
+        const response = await fetch(`${XM_BARS_ENDPOINT}?${query}`, {
+          cache: "no-store",
+          signal: controller.signal
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok || !payload.ok) throw new Error(payload.error || `HTTP ${response.status}`);
+
+        const bars = (payload.bars || []).filter(bar =>
+          [bar.open, bar.high, bar.low, bar.close, bar.time].every(value => Number.isFinite(Number(value)))
+          && Number(bar.high) >= Number(bar.low)
+        ).map(bar => ({
+          ...bar,
+          time: Number(bar.time),
+          open: Number(bar.open),
+          high: Number(bar.high),
+          low: Number(bar.low),
+          close: Number(bar.close)
+        }));
+        if (bars.length < SUPERTREND_PERIOD + 5) throw new Error("Chưa đủ nến để tính Supertrend.");
+
+        const series = computeSupertrend(bars);
+        let signalIndex = bars.length - 1;
+        while (signalIndex >= 0 && bars[signalIndex].closed === false) signalIndex -= 1;
+        while (signalIndex >= 0 && !series[signalIndex]?.direction) signalIndex -= 1;
+        if (signalIndex < 0) throw new Error("Chưa hình thành tín hiệu Supertrend.");
+
+        for (let index = signalIndex + 1; index < series.length; index += 1) {
+          series[index] = { ...series[signalIndex] };
+        }
+        trendChartData = { payload, bars, series, signalIndex };
+        drawTrendChart();
+        renderTrendReadout(payload, bars, series, signalIndex);
+        trendChartMessage.classList.add("hidden");
+        return true;
+      } catch (error) {
+        const message = error.name === "AbortError"
+          ? "Cầu nối MT5 phản hồi quá chậm. Hãy kiểm tra terminal đang mở."
+          : error.message;
+        setTrendState("CHƯA CÓ DỮ LIỆU", "neutral");
+        trendChartMessage.textContent = `${message} Mở XM MT5 và chạy start_xm.bat, rồi thử lại.`;
+        trendChartMessage.classList.remove("hidden");
+        return false;
+      } finally {
+        clearTimeout(timeout);
+        if (!silent) trendRefreshButton.disabled = false;
+      }
+    }
+
+    async function startTrendPolling() {
+      if (trendPollTimer) clearInterval(trendPollTimer);
+      await updateTrendChart();
+      trendPollTimer = setInterval(() => updateTrendChart(true), 5000);
     }
 
     function listHtml(items, tone) {
@@ -782,12 +1322,12 @@
     async function analyzeGold() {
       const apiKey = apiKeyInput.value.trim();
       const serperKey = serperKeyInput.value.trim();
-      if (!apiKey) {
+      if (!localApiConfig.geminiConfigured && !apiKey) {
         setStatus("Vui lòng nhập Gemini API key.", true);
         apiKeyInput.focus();
         return;
       }
-      if (!serperKey) {
+      if (!localApiConfig.serperConfigured && !serperKey) {
         setStatus("Vui lòng nhập Serper API key.", true);
         serperKeyInput.focus();
         return;
@@ -824,11 +1364,12 @@ Nếu có giá XM, hãy ưu tiên midpoint XM làm mốc gần nhất cho vùng 
 
 Mục tiêu: đánh giá vàng có khả năng TĂNG, GIẢM hay ĐI NGANG trong ngắn hạn và bắt buộc đưa ra dự đoán riêng cho 5 phút, 15 phút và 1 giờ. Tách rõ dữ kiện khỏi suy luận. Không bịa giá hoặc sự kiện; nếu nguồn không thống nhất, nêu thận trọng trong phần tóm tắt. Viết toàn bộ nội dung bằng tiếng Việt. Độ tin cậy không vượt quá 85%.`;
 
-        const response = await fetch(ENDPOINT, {
+        const useLocalGeminiKey = localApiConfig.geminiConfigured;
+        const response = await fetch(useLocalGeminiKey ? LOCAL_GEMINI_ENDPOINT : ENDPOINT, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "x-goog-api-key": apiKey
+            ...(useLocalGeminiKey ? {} : { "x-goog-api-key": apiKey })
           },
           body: JSON.stringify({
             contents: [{ parts: [{ text: prompt }] }],
@@ -845,7 +1386,7 @@ Mục tiêu: đánh giá vàng có khả năng TĂNG, GIẢM hay ĐI NGANG trong
 
         const payload = await response.json().catch(() => ({}));
         if (!response.ok || payload.error) {
-          const message = payload?.error?.message || `HTTP ${response.status}`;
+          const message = responseErrorMessage(payload, response.status);
           throw new Error(message);
         }
 
@@ -879,7 +1420,15 @@ Mục tiêu: đánh giá vàng có khả năng TĂNG, GIẢM hay ĐI NGANG trong
       if (event.key === "Enter") analyzeGold();
     });
     xmConnectButton.addEventListener("click", startXmPolling);
+    trendRefreshButton.addEventListener("click", startTrendPolling);
+    trendTimeframeInput.addEventListener("change", startTrendPolling);
+    chartSymbolInput.addEventListener("keydown", event => {
+      if (event.key === "Enter") startTrendPolling();
+    });
+    new ResizeObserver(() => requestAnimationFrame(drawTrendChart)).observe(trendChartWrap);
+    loadLocalApiConfig();
     startXmPolling();
+    startTrendPolling();
   </script>
 </body>
 </html>
